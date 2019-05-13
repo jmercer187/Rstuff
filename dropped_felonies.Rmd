@@ -1,0 +1,145 @@
+---
+title: "Dropped Felony Charges"
+author: "Jacob Mercer"
+date: "5/12/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(data.table)
+library(knitr)
+
+setwd('C:\\Users\\Jake\\Documents\\R\\EquityAnalysis\\2_ModFiles')
+
+lmdc_raw <- fread('LMDC_pop.csv')
+
+lmdc <- lmdc_raw %>%
+  mutate(
+    BookingNumber = str_trim(BookingNumber, "both"),
+    BookingDate = ymd_hms(BookingDate),
+    SnapshotDateTime = ymd_hms(SnapshotDateTime),
+    RaceDescription = str_trim(RaceDescription, 'both'),
+    RaceDescription = if_else(RaceDescription == 'UNKNOWN', 'Other', RaceDescription),
+    Charge = if_else(Charge == 'ESCAPE 2ND DEGREE-(IDENTIFY FACILITY)', 'ESCAPE 2ND DEGREE - (IDENTIFY FACILITY)', Charge)
+  ) %>%
+  filter(BookingDate >= '2014-07-11')
+
+# find population that has only MISDEMEANORS for all resolved charges
+
+mis_cd <- lmdc %>%
+  filter(!is.null(ChargeDisposition) & str_trim(ChargeDisposition, 'both') != '') %>%
+  filter(ChargeCategory == 'MISDEMEANOR' | ChargeCategory == 'VIOLATION')
+
+mis_cd_bns <- mis_cd %>%
+  group_by(BookingNumber, RaceCode, RaceDescription, CurrentAge, Gender, MaritalStatus, ChargeCategory) %>%
+  summarize()
+
+# get the whole charge history for mis_cd_bns
+
+mis_cd_full <- lmdc %>%
+  filter(BookingNumber %in% mis_cd_bns$BookingNumber)
+
+# get population of individuals who were booked with felonies but were never charged with felonies
+
+mis_cd_felony_booking_bns <- mis_cd_full %>%
+  group_by(BookingNumber) %>%
+  filter(SnapshotDateTime == min(SnapshotDateTime)) %>%
+  filter(ChargeCategory == 'FELONY') %>%
+  distinct(BookingNumber) %>%
+  arrange(BookingNumber)
+
+fel_bkng_mis_cd <- lmdc %>%
+  filter(BookingNumber %in% mis_cd_felony_booking_bns$BookingNumber)
+ 
+fel_bkng_mis_cd_pop <- fel_bkng_mis_cd %>%
+  group_by(BookingNumber, RaceCode, RaceDescription) %>%
+  summarize(ChargeCount = n()) %>%
+  filter(!duplicated(BookingNumber)) %>%
+  arrange(BookingNumber)
+
+# be able to compare against total lmdc pop
+  
+lmdc_pop <- lmdc %>%
+  group_by(BookingNumber, RaceCode, RaceDescription) %>%
+  summarize(ChargeCount = n()) %>%
+  filter(!duplicated(BookingNumber)) %>%
+  arrange(BookingNumber)
+
+# get top N felonies dropped for white vs non-white
+# filter out to look at just the charges for initial booking (since we know the end state is no felonies)
+
+fb_mc_booking_BN_time <- fel_bkng_mis_cd %>%
+  group_by(BookingNumber, SnapshotDateTime) %>%
+  summarize() %>%
+  filter(SnapshotDateTime == min(SnapshotDateTime)) %>%
+  mutate(
+    combo = str_c(BookingNumber, SnapshotDateTime, sep = '_')
+  )
+
+charges_at_booking <- fel_bkng_mis_cd %>%
+  filter(str_c(BookingNumber, SnapshotDateTime, sep = '_') %in% fb_mc_booking_BN_time$combo)
+
+top_n_w_f <- charges_at_booking %>%
+  filter(RaceCode == 'W') %>%
+  filter(ChargeCategory == "FELONY") %>%
+  group_by(Charge) %>%
+  summarize(Count = n()) %>%
+  top_n(20, Count) %>%
+  arrange(desc(Count))
+
+colnames(top_n_w_f) <- c('Charges : White', 'Count : White')
+
+top_n_non_w_f <- charges_at_booking %>%
+  filter(RaceCode != 'W') %>%
+  filter(ChargeCategory == "FELONY") %>%
+  group_by(Charge) %>%
+  summarize(Count = n()) %>%
+  top_n(20, Count) %>%
+  arrange(desc(Count))
+
+colnames(top_n_non_w_f) <- c('Charge : Non-White', 'Count : Non-White')
+
+top_n_chart <- cbind(top_n_w_f, top_n_non_w_f)
+
+```
+
+
+When individuals are booked they are sometimes charged with crimes that are later dropped. This analysis examines the population of individuals who were charged with felonies but, by the time all charges were resolved, these individuals were only charged with misdemeanors. That is, the population of individuals who were charged with felonies that were subsequently dropped.
+
+This graphic compares the population of individuals with felonies that get dropped against the entire population of individuals booked:
+
+```{r percent-chart, echo=FALSE}
+ggplot() +
+  geom_bar(data = lmdc_pop,
+           aes(x = RaceDescription,
+               y = (..count..)/sum(..count..),
+               fill = RaceDescription),
+           color = 'black',
+           alpha = .3) +
+  geom_bar(data = fel_bkng_mis_cd_pop,
+           aes(x = RaceDescription, 
+               y = (..count..)/sum(..count..),
+               fill = RaceDescription),
+           color = 'black',
+           width = .6) +
+scale_y_continuous(labels=scales::percent) +
+  ggtitle("Individuals Booked w/ Felonies but Charged w/ Misdemeanors",
+          subtitle = 'Lightly shaded bars represent the total LMDC population') +
+  ylab("Percentage") +
+  xlab('') +
+  theme(axis.text.x = element_blank())
+```
+
+## Specific Charges Dropped
+
+These are the charges that are most likely to get dropped, comparing white individuals to non-white individuals:
+
+```{r pressure, echo=FALSE}
+kable(top_n_chart)
+```
+
+### References
+[Data is drawn from Louisville Metro Dept of Corrections](https://data.louisvilleky.gov/dataset/daily-lmdc-population-snapshots) and covers Jefferson County, KY from the time frame from 2014-07-11 to 2016-06-29

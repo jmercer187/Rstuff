@@ -1,0 +1,249 @@
+---
+title: "LMDC Misdeamenor Charges and Marijuana Charges"
+author: "Jacob Mercer"
+date: "5/8/2019"
+output: html_document
+code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(data.table)
+library(knitr)
+
+setwd('C:\\Users\\Jake\\Documents\\R\\EquityAnalysis\\2_ModFiles')
+
+lmdc_raw <- fread('LMDC_pop.csv')
+
+lmdc <- lmdc_raw %>%
+  mutate(
+    BookingNumber = str_trim(BookingNumber, "both"),
+    BookingDate = ymd_hms(BookingDate),
+    SnapshotDateTime = ymd_hms(SnapshotDateTime),
+    RaceDescription = str_trim(RaceDescription, 'both'),
+    RaceDescription = if_else(RaceDescription == 'UNKNOWN', 'Other', RaceDescription)
+  ) %>%
+  filter(BookingDate >= '2014-07-11')
+
+
+# pull out all BNs that have charges *other* than MISDEMEANOR
+
+lmdc_not_mis <- lmdc %>% 
+  filter(ChargeCategory != 'MISDEMEANOR') %>%
+  distinct(BookingNumber)
+
+# use lmdc_not_mis to get all BNs from LMDC that are only brought in on MISDEMEANOR charges
+
+lmdc_mis <- lmdc %>%
+  filter(!BookingNumber %in% lmdc_not_mis$BookingNumber)
+
+lmdc_mis_BNs <- lmdc_mis %>%
+  distinct(BookingNumber) %>%
+  filter(!BookingNumber %in% lmdc_not_mis$BookingNumber)
+
+
+# to look at what people are charged with when brought in, pull out all BNs that have the min snapshot datetime
+
+mis_init_booking <- lmdc_mis %>%
+  group_by(BookingNumber) %>%
+  filter(SnapshotDateTime == min(SnapshotDateTime))
+  
+```
+
+## Misdemeanor Charges
+Filtered LMDC booking data (July 2014 through June 2016) to look at individuals who are intially booked exclusively on misdeamenor charges
+
+
+```{r outline-data, echo=FALSE}
+# Individuals
+mis_init_booking_by_race <- mis_init_booking %>%
+  group_by(BookingNumber, RaceDescription) %>%
+  summarize() %>%
+  group_by(RaceDescription) %>%
+  summarize(Count = n()) %>%
+  arrange(desc(Count))
+
+kable(mis_init_booking_by_race, caption = "Racial Composition of Individuals Booked on Misdemeanor Charges")
+
+mis_init_booking %>%
+  mutate(
+    BookingDate = as_date(BookingDate),
+    year_mo = str_sub(BookingDate, end = 7)
+  ) %>%
+  group_by(year_mo, RaceDescription) %>%
+  summarize(n = n(),
+            daily_avg = n() / 30) %>%
+  ggplot() +
+  geom_col(aes(x = year_mo, y = daily_avg, fill = RaceDescription)) +
+  labs(title = 'Monthly Average of Misdemeanor Bookings Per Day') +
+  ylab('Count') +
+  xlab('Year-Month') +
+  theme(axis.text.x = element_text(size = 10, angle = 45))
+
+# Age Breakdown
+mis_init_booking %>%
+  group_by(BookingNumber, CurrentAge, RaceDescription) %>%
+  summarize() %>%
+  ggplot() +
+  geom_freqpoly(aes(x = CurrentAge, color = RaceDescription), binwidth = 2) +
+  labs(title = 'Age Distribution by Race') +
+  ylab('Count') +
+  xlab('Age')
+
+```
+
+## Marijauna Charges
+
+Further focused on marijuana misdemeanor offenses for two reasons
+
+* Examine racial disparity in marijuana charges
+* Get a sense for the effect of decriminalization or legalization
+
+### Racial Disparities
+
+```{r mj-charges, echo=FALSE}
+# filter lmdc_mis to look at marijuana offences
+
+mj_mis_BNs <- mis_init_booking %>%
+  filter(str_detect(Charge, 'MARIJUANA')) %>%
+  distinct(BookingNumber)
+
+mj_mis <- mis_init_booking %>%
+  filter(BookingNumber %in% mj_mis_BNs$BookingNumber)
+
+# look at top charges by race
+
+mj_mis_top_n <- mj_mis %>%
+  group_by(Charge) %>%
+  summarize(n = n()) %>%
+  top_n(3, n)
+
+mj_mis %>%
+  filter(Charge %in% mj_mis_top_n$Charge) %>%
+  mutate(
+    RaceCode = ifelse(RaceCode == 'W', 'W', 'not W')
+  ) %>%
+  ggplot() +
+  geom_bar(aes(x = Charge, fill = RaceCode), position = 'dodge') +
+  coord_flip() +
+  labs(title = 'Top 3 Misdemeanor Charges') +
+  ylab('Count') +
+  xlab('') +
+  theme(axis.text.x = element_text(size = 10, angle = 45)) +
+  theme(axis.text.y = element_text(size = 10))
+
+mj_mis_w <- mj_mis %>%
+  filter(RaceCode == 'W') %>%
+  group_by(Charge) %>%
+  summarize(Count = n()) %>%
+  top_n(10, Count) %>%
+  arrange(desc(Count))
+
+kable(mj_mis_w, caption = "Top 10 Misdemeanor Charges for White Individuals")
+
+mj_mis_w <- mj_mis %>%
+  filter(RaceCode != 'W') %>%
+  group_by(Charge) %>%
+  summarize(Count = n()) %>%
+  top_n(10, Count) %>%
+  arrange(desc(Count))
+
+kable(mj_mis_w, caption = "Top 10 Misdemeanor Charges for Non-White Individuals")
+
+
+```
+
+
+### Decriminalization
+
+An examination of the effect if the state of Kentucky no longer required that any marijuana offense meant that an individual must be bought into custody. (Please see the Note on Assumptions)
+
+```{r mj-decrim-calc, echo=FALSE}
+
+removed_charges <- mj_mis %>%
+  ungroup() %>%
+  filter(str_detect(Charge, 'DEADLY') | str_detect(Charge, 'U/INFLUENCE') | str_detect(Charge, 'ROBBERY') | str_detect(Charge, 'EPO')) %>%
+  distinct(Charge)
+
+# get BNs that have these charges and use to filter mj_mis to get BNs that don't
+
+removed_charges_BNs <- mj_mis %>%
+  filter(Charge %in% removed_charges$Charge) %>%
+  distinct(BookingNumber)
+
+included_charges <- mj_mis %>%
+  ungroup() %>%
+  filter(!Charge %in% removed_charges$Charge) %>% 
+  distinct(Charge)
+
+mj_non_v_BNs <- mj_mis %>%
+  filter(!BookingNumber %in% removed_charges_BNs$BookingNumber) %>%
+  distinct(BookingNumber)
+
+mj_non_v_offenders <- mj_mis %>% filter(BookingNumber %in% mj_non_v_BNs$BookingNumber) %>%
+  group_by(BookingNumber, RaceDescription) %>%
+  summarize() %>%
+  group_by(RaceDescription) %>%
+  summarize(Count = n()) %>%
+  arrange(desc(Count))
+
+mj_non_v_time_booked <- lmdc %>%
+  filter(BookingNumber %in% mj_non_v_BNs$BookingNumber) %>%
+  group_by(BookingNumber) %>%
+  summarise(BookingDate = min(BookingDate),
+            EndDate = max(SnapshotDateTime),
+            TimeBooked = max(SnapshotDateTime) - min(BookingDate),
+            EstCost = as.integer(TimeBooked) * 82)
+
+total_cost <- sum(mj_non_v_time_booked$EstCost)
+median_time_booked <- median(mj_non_v_time_booked$TimeBooked)
+start_date <- min(mj_non_v_time_booked$BookingDate)
+end_date <- max(mj_non_v_time_booked$EndDate)
+cost_per_week <- round(total_cost / as.numeric(end_date - start_date), 2) * 7
+
+```
+
+```{r mj-decrim-show, echo=FALSE}
+kable(mj_non_v_offenders, caption = 'Individuals who would not be booked')
+```
+
+The median time over which inidivuals are booked:
+
+```{r median-time-booked, echo = FALSE}
+median_time_booked
+```
+
+Estimating that it costs $82[^1] per individual per day to house booked individuals, this is the total cost of holding:
+
+```{r total-cost, echo = FALSE}
+total_cost
+```
+
+This is over the entire time period of the dataset:
+
+```{r date-range, echo=F}
+start_date
+end_date
+```
+
+Which leads to an average weekly cost of:
+
+```{r cost-per-week, echo=F}
+cost_per_week
+```
+
+
+
+**NOTE ON ASSUMPTIONS**
+Since virtually all individuals booked have multiple charges, the following charges are inlcuded along with marijuana offenses. The working assumption for the above analysis is that these charges do *not* require an individual to be booked and that the marijuana charges were the precipitating factor. However given the subjective nature of police work and that each incident is unique, the above analysis should be taken as an estimation of general trends and not a rigorous statement of fact.
+
+```{r charged-included, echo=F}
+kable(included_charges, caption='Charges Included')
+```
+
+### References
+[Data is drawn from Louisville Metro Dept of Corrections](https://data.louisvilleky.gov/dataset/daily-lmdc-population-snapshots) and covers Jefferson County, KY from the time frame from 2014-07-11 to 2016-06-29
+
+[^1]: $82 per individual per day figure is from conversationa with City of Louisville's Center for Health Equity
