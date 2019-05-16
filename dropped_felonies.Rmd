@@ -2,7 +2,10 @@
 title: "Dropped Felony Charges"
 author: "Jacob Mercer"
 date: "5/12/2019"
-output: html_document
+output: 
+  html_document:
+    code_folding: hide
+    theme: spacelab
 ---
 
 ```{r setup, include=FALSE}
@@ -16,16 +19,18 @@ setwd('C:\\Users\\Jake\\Documents\\R\\EquityAnalysis\\2_ModFiles')
 
 lmdc_raw <- fread('LMDC_pop.csv')
 
+```
+
+```{r data-setup}
 lmdc <- lmdc_raw %>%
   mutate(
     BookingNumber = str_trim(BookingNumber, "both"),
     BookingDate = ymd_hms(BookingDate),
     SnapshotDateTime = ymd_hms(SnapshotDateTime),
     RaceDescription = str_trim(RaceDescription, 'both'),
-    RaceDescription = if_else(RaceDescription == 'UNKNOWN', 'Other', RaceDescription),
-    Charge = if_else(Charge == 'ESCAPE 2ND DEGREE-(IDENTIFY FACILITY)', 'ESCAPE 2ND DEGREE - (IDENTIFY FACILITY)', Charge)
+    RaceDescription = if_else(RaceDescription == 'UNKNOWN', 'Other', RaceDescription)
   ) %>%
-  filter(BookingDate >= '2014-07-11')
+  filter(BookingDate >= '2014-08-01' & BookingDate <= '2015-08-01')
 
 # find population that has only MISDEMEANORS for all resolved charges
 
@@ -103,15 +108,16 @@ top_n_non_w_f <- charges_at_booking %>%
 colnames(top_n_non_w_f) <- c('Charge : Non-White', 'Count : Non-White')
 
 top_n_chart <- cbind(top_n_w_f, top_n_non_w_f)
-
 ```
 
 
 When individuals are booked they are sometimes charged with crimes that are later dropped. This analysis examines the population of individuals who were charged with felonies but, by the time all charges were resolved, these individuals were only charged with misdemeanors. That is, the population of individuals who were charged with felonies that were subsequently dropped.
 
+The population examined exists between the 12 month period of August 2014 through July 2015. Please see NOTE at the end for more information about the methodology.
+
 This graphic compares the population of individuals with felonies that get dropped against the entire population of individuals booked:
 
-```{r percent-chart, echo=FALSE}
+```{r percent-chart}
 ggplot() +
   geom_bar(data = lmdc_pop,
            aes(x = RaceDescription,
@@ -137,9 +143,15 @@ scale_y_continuous(labels=scales::percent) +
 
 These are the charges that are most likely to get dropped, comparing white individuals to non-white individuals:
 
-```{r pressure, echo=FALSE}
+```{r pressure}
 kable(top_n_chart)
 ```
+
+### Note on Methodology
+
+The dataset used to determine the above does not indicate when all the charges facing a given individual are concluded. Meaning that this analysis infers that all the charges against an individual are concluded within 12 months of the initial booking, at most. Since the dataset's most recent entry date is July 29, 2016, the above data is taken from the time period of August 2014 through July 2015.
+
+This necessarily means that some outlier individuals whose resolution of charges takes upwards of year will be incorrectly picked up by this analysis. However the presence of such outliers is sufficeintly small so as to not invalidate the general conclusions.
 
 ### References
 [Data is drawn from Louisville Metro Dept of Corrections](https://data.louisvilleky.gov/dataset/daily-lmdc-population-snapshots) and covers Jefferson County, KY from the time frame from 2014-07-11 to 2016-06-29

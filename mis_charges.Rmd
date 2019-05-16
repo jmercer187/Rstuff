@@ -2,8 +2,9 @@
 title: "LMDC Misdeamenor Charges and Marijuana Charges"
 author: "Jacob Mercer"
 date: "5/8/2019"
-output: html_document
-code_folding: hide
+output: 
+  html_document:
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -16,7 +17,10 @@ library(knitr)
 setwd('C:\\Users\\Jake\\Documents\\R\\EquityAnalysis\\2_ModFiles')
 
 lmdc_raw <- fread('LMDC_pop.csv')
+  
+```
 
+```{r data-prep}
 lmdc <- lmdc_raw %>%
   mutate(
     BookingNumber = str_trim(BookingNumber, "both"),
@@ -49,14 +53,14 @@ lmdc_mis_BNs <- lmdc_mis %>%
 mis_init_booking <- lmdc_mis %>%
   group_by(BookingNumber) %>%
   filter(SnapshotDateTime == min(SnapshotDateTime))
-  
 ```
+
 
 ## Misdemeanor Charges
 Filtered LMDC booking data (July 2014 through June 2016) to look at individuals who are intially booked exclusively on misdeamenor charges
 
 
-```{r outline-data, echo=FALSE}
+```{r outline-data}
 # Individuals
 mis_init_booking_by_race <- mis_init_booking %>%
   group_by(BookingNumber, RaceDescription) %>%
@@ -103,7 +107,7 @@ Further focused on marijuana misdemeanor offenses for two reasons
 
 ### Racial Disparities
 
-```{r mj-charges, echo=FALSE}
+```{r mj-charges}
 # filter lmdc_mis to look at marijuana offences
 
 mj_mis_BNs <- mis_init_booking %>%
@@ -158,13 +162,20 @@ kable(mj_mis_w, caption = "Top 10 Misdemeanor Charges for Non-White Individuals"
 
 ### Decriminalization
 
-An examination of the effect if the state of Kentucky no longer required that any marijuana offense meant that an individual must be bought into custody. (Please see the Note on Assumptions)
+An examination of the effect if the state of Kentucky no longer required an individual must be bought into custody for marijuana offenses. 
 
-```{r mj-decrim-calc, echo=FALSE}
+For more information on the methdology, please see the folloiwng Note on Assumptions.
+
+```{r mj-decrim-calc}
 
 removed_charges <- mj_mis %>%
   ungroup() %>%
-  filter(str_detect(Charge, 'DEADLY') | str_detect(Charge, 'U/INFLUENCE') | str_detect(Charge, 'ROBBERY') | str_detect(Charge, 'EPO')) %>%
+  filter(str_detect(Charge, 'DEADLY') 
+         | str_detect(Charge, 'U/INFLUENCE') 
+         | str_detect(Charge, 'ROBBERY')
+         | str_detect(Charge, 'ASSAULT')
+         | str_detect(Charge, 'ENHANCEMENT')
+         | str_detect(Charge, 'EPO')) %>%
   distinct(Charge)
 
 # get BNs that have these charges and use to filter mj_mis to get BNs that don't
@@ -236,10 +247,14 @@ cost_per_week
 
 
 
-**NOTE ON ASSUMPTIONS**
+### Note on Assumptions
+
 Since virtually all individuals booked have multiple charges, the following charges are inlcuded along with marijuana offenses. The working assumption for the above analysis is that these charges do *not* require an individual to be booked and that the marijuana charges were the precipitating factor. However given the subjective nature of police work and that each incident is unique, the above analysis should be taken as an estimation of general trends and not a rigorous statement of fact.
 
-```{r charged-included, echo=F}
+Generally, the misdemeanors removed from consideration are any robber, driving under the influence, possession of a deadly weapon, assault, or EPO violation.
+
+
+```{r charged-included}
 kable(included_charges, caption='Charges Included')
 ```
 
