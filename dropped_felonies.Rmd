@@ -31,6 +31,15 @@ lmdc <- lmdc_raw %>%
     RaceDescription = if_else(RaceDescription == 'UNKNOWN', 'Other', RaceDescription)
   ) %>%
   filter(BookingDate >= '2014-08-01' & BookingDate <= '2015-08-01')
+  
+# drop murder / manslaughter offenders  
+lmdc_murder_BNs <- lmdc %>%
+  filter(str_detect(Charge, "MURDER") | str_detect(Charge, "SLAUGHTER")) %>%
+  group_by(BookingNumber) %>%
+  summarize()
+
+lmdc <- lmdc %>%
+  filter(!BookingNumber %in% lmdc_murder_BNs$BookingNumber)
 
 # find population that has only MISDEMEANORS for all resolved charges
 
@@ -149,7 +158,7 @@ kable(top_n_chart)
 
 ### Note on Methodology
 
-The dataset used to determine the above does not indicate when all the charges facing a given individual are concluded. Meaning that this analysis infers that all the charges against an individual are concluded within 12 months of the initial booking, at most. Since the dataset's most recent entry date is July 29, 2016, the above data is taken from the time period of August 2014 through July 2015.
+The dataset used to determine the above does not indicate when all the charges facing a given individual are concluded. Meaning that this analysis infers that all the charges against an individual are concluded within 12 months of the initial booking, at most. Recognizing the length of time it can take to resolve, all individuals with charged any kind of Murder or Mansluaghter crime have been removed from the dataset. Since the dataset's most recent entry date is July 29, 2016, the above data is taken from the time period of August 2014 through July 2015.
 
 This necessarily means that some outlier individuals whose resolution of charges takes upwards of year will be incorrectly picked up by this analysis. However the presence of such outliers is sufficeintly small so as to not invalidate the general conclusions.
 
