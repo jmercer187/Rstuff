@@ -36,45 +36,66 @@ PointBet <- function(result, point, bet, bet_type) {
 }
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-bet_outcome <- vector(mode = "integer")
-
-for (i in seq_along(1:1)){
-  bet = 20
-  bet_type = 'dont pass'
+PlayGame <- function(bet, bet_type, iterations, pass_bet=NULL, pass_bet_typ=NULL){
+  bet_outcome <- vector(mode = "integer")
   
-  roll <- RollDie(2)
-  
-  result <- sum(roll)
-  
-  bet_init <- bet
-  i = 1
-  
-  bet <- ComeOutBet(result, bet, bet_type)
-  
-  if (bet_init == bet){
-    point <- result
-    roll <- RollDie(2)
-    result <- sum(roll)
-    print(cat("point 1 :", roll, point, sep = " "))
+  for (i in seq_along(1:10)){
+    bet = 20
+    bet_type = 'dont pass'
     
-    if (point == result){
-      bet <- PointBet(result, point, bet, bet_type)
-    } else{
-      while (point == result | result =! 7) {
-        roll <- RollDie(2)
-        result <- sum(roll)
-        i = i + 1
-        print(cat("point", i , ":", roll, point, sep = " "))
+    roll <- RollDie(2)
+    
+    result <- sum(roll)
+    
+    bet_init <- bet
+    i = 1
+    
+    bet <- ComeOutBet(result, bet, bet_type)
+    
+    if (bet_init == bet){
+      point <- result
+      roll <- RollDie(2)
+      result <- sum(roll)
+      print(cat("point 1 :", roll, point, sep = " "))
+      
+      if (point == result){
+        bet <- PointBet(result, point, bet, bet_type)
+      } else{
+        
+        while (result != 7 & result != point){
+          roll <- RollDie(2)
+          result <- sum(roll)
+          print(result)
+        }
+        
+        bet <- PointBet(result, point, bet, bet_type)
+        print(cat("point close loop :", roll, point, sep = " "))
+        
       }
-      bet <- PointBet(result, point, bet, bet_type)
-      print(cat("point close loop :", roll, point, sep = " "))
     }
+    bet_outcome <- append(bet_outcome, bet) 
   }
-  
-  bet_outcome <- append(bet_outcome, bet) 
-  print(bet)
+  return(bet_outcome)
 }
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+pass_mean <- mean(PlayGame(20, "pass", 1000))
+dont_pass_mean <- mean(PlayGame(20, "dont pass", 1000))
+
+
+
+
+
+
+  
+
 
 pass_mean <- mean(bet_outcome)
 dontpass_mean <- mean(bet_outcome)
+
+
+
+print(result)
