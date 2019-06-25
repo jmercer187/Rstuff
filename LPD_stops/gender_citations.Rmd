@@ -1,0 +1,61 @@
+---
+title: "Gender and Traffic Stops"
+author: "Jacob Mercer"
+date: "6/24/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# put libraries here
+# put initial data transform here
+
+```
+
+## Officer Gender and Traffic Stops
+
+PARAGRAPH 1
+
+```{graph 1, echo=FALSE}
+# graph of male vs female officers pulling ppl over
+```
+
+
+PARAGRAPH 2
+
+
+```{tables, echo=FALSE}
+# tables of male and female officer data frames
+```
+
+
+PARAGRAPH 3
+
+```{graph 2, echo=FALSE}
+# age range, driver race, number of passengers graphs
+```
+
+
+PARAGRAPH 4
+
+
+```{graph 3, echo=FALSE}
+# date charts
+```
+
+
+PARAGRAPH 5
+
+
+```{graph 4, echo=FALSE}
+# DIVISION GRAPH
+```
+
+
+PARAGRAPH 6
+
+
+
+CITE DATA SOURCE
+
