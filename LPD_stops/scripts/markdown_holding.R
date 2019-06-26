@@ -1,11 +1,25 @@
+---
+  title: "Gender and Traffic Stops"
+author: "Jacob Mercer"
+date: "6/24/2019"
+output: 
+  html_document:
+  code_folding: hide
+---
+  
+  ```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
 library(tidyverse)
 library(lubridate)
 library(data.table)
+library(knitr)
 
+stops_raw <- fread("C:/Users/Jake/Documents/Repos/Rstuff/LPD_stops/source_data/LMPD_STOPS_DATA_12.csv")
 
-stops_raw <- fread("source_data/LMPD_STOPS_DATA_12.csv")
+```
 
-unique(stops_raw$`ACTIVITY RESULTS`)
+```{data transform}
 
 stops <- stops_officer_m <- stops_raw %>%
   filter(OFFICER_GENDER != '') %>%
@@ -42,16 +56,6 @@ stops_officer_m <- stops %>%
     perc = round((freq * 100), 0)
   )
 
-p <- ggplot(data = stops_officer_m, mapping = aes(x = DRIVER_GENDER, y = perc))
-p + geom_col(aes(fill = `ACTIVITY RESULTS`), position = "dodge") +
-  labs(x = "Gender", 
-       y = 'Percentage',
-       title = "Stops by Male Officers",
-       subtitle = "Percentage of Warnings vs Citations given by gender",
-       caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
-  scale_fill_discrete(name = "Stop Outcome")
-  
-
 stops_officer_f <- stops %>%
   filter(OFFICER_GENDER == 'F') %>%
   group_by(DRIVER_GENDER, `ACTIVITY RESULTS`) %>%
@@ -61,34 +65,6 @@ stops_officer_f <- stops %>%
     perc = round((freq * 100), 0)
   )
 
-p <- ggplot(data = stops_officer_f, mapping = aes(x = DRIVER_GENDER, y = perc))
-p + geom_col(aes(fill = `ACTIVITY RESULTS`), position = "dodge") +
-  labs(x = "Gender", 
-       y = 'Percentage',
-       title = "Stops by Female Officers",
-       subtitle = "Percentage of Warnings vs Citations given by gender",
-       caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
-  scale_fill_discrete(name = "Stop Outcome")
-
-
-unique(stops$ACTIVITY_BEAT)
-
-officer_beats <- stops %>%
-  group_by(OFFICER_GENDER, ACTIVITY_BEAT) %>%
-  summarize(N = n()) %>%
-  mutate(
-    freq = N / sum(N),
-    perc = round((freq * 100), 0)
-  )
-
-p <- ggplot(data = officer_beats, mapping = aes(x = OFFICER_GENDER, y = perc))
-p + geom_col(aes(fill = ACTIVITY_BEAT), position = "dodge2") +
-  labs(x = "Gender", 
-       y = 'Percentage',
-       title = "Beat Distribution by Officer Gender",
-       caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
-  scale_fill_discrete(name = "Beat")
-
 officer_divisions <- stops %>%
   group_by(OFFICER_GENDER, ACTIVITY_DIVISION) %>%
   summarize(N = n()) %>%
@@ -97,15 +73,36 @@ officer_divisions <- stops %>%
     perc = round((freq * 100), 0)
   )
 
-p <- ggplot(data = officer_divisions, mapping = aes(x = OFFICER_GENDER, y = perc))
-p + geom_col(aes(fill = ACTIVITY_DIVISION), position = "dodge2") +
+```
+
+## Officer Gender and Traffic Stops
+
+PARAGRAPH 1
+
+```{graph 1}
+p <- ggplot(data = stops_officer_m, mapping = aes(x = DRIVER_GENDER, y = perc))
+p + geom_col(aes(fill = `ACTIVITY RESULTS`), position = "dodge") +
   labs(x = "Gender", 
        y = 'Percentage',
-       title = "Division Distribution by Officer Gender",
+       title = "Stops by Male Officers",
+       subtitle = "Percentage of Warnings vs Citations given by gender",
        caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
-  scale_fill_discrete(name = "Division")
+  scale_fill_discrete(name = "Stop Outcome")
+```
 
 
+PARAGRAPH 2
+
+
+```{tables}
+kable(stops_officer_m)
+kable(stops_officer_f)
+```
+
+
+PARAGRAPH 3
+
+```{graph 2}
 p <- ggplot(data = stops, mapping = aes(x = DRIVER_AGE_RANGE))
 p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), position = "dodge") +
   labs(x = "Age", 
@@ -126,12 +123,20 @@ p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), p
 
 p <- ggplot(data = stops, mapping = aes(x = DRIVER_RACE))
 p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), position = "dodge") +
+  labs(title = "") +
   labs(x = "Race", 
        y = 'Percentage',
        title = "Driver Race by Officer Gender",
        caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
   scale_fill_discrete(name = "Officer Gender")
 
+```
+
+
+PARAGRAPH 4
+
+
+```{graph 3}
 p <- ggplot(data = stops, mapping = aes(x = cat_month))
 p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), position = "dodge") +
   labs(x = "Month", 
@@ -140,7 +145,17 @@ p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), p
        caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
   scale_fill_discrete(name = "Officer Gender") +
   scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12),
-                   labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+                     labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+
+p <- ggplot(data = stops, mapping = aes(x = cat_mday))
+p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), position = "dodge") +
+  labs(x = "Month", 
+       y = 'Percentage',
+       title = "Day of The Month of Stop by Officer Gender",
+       caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
+  scale_fill_discrete(name = "Officer Gender") +
+  scale_x_continuous(breaks = c(1,5,10,15,20,25,30))
 
 p <- ggplot(data = stops, mapping = aes(x = cat_wday))
 p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), position = "dodge") +
@@ -152,15 +167,6 @@ p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), p
   scale_x_continuous(breaks = c(1,2,3,4,5,6,7),
                      labels = c("Sun", "Mon", "Tues", "Weds", "Thurs", "Fri", "Sat"))
 
-p <- ggplot(data = stops, mapping = aes(x = cat_mday))
-p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), position = "dodge") +
-  labs(x = "Day", 
-       y = 'Percentage',
-       title = "Day of The Month of Stop by Officer Gender",
-       caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
-  scale_fill_discrete(name = "Officer Gender") +
-  scale_x_continuous(breaks = c(1,5,10,15,20,25,30))
-
 p <- ggplot(data = stops, mapping = aes(x = cat_time))
 p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), position = "dodge") +
   labs(x = "Hour", 
@@ -171,27 +177,26 @@ p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), p
   scale_x_discrete(labels = c("0-4", "4-8", "8-12", "12-16", "16-20", "20-24"))
 
 
-stops_r <- stops %>%
-  filter(OFFICER_GENDER == "F") %>%
-  transmute(
-    activity_results = as.factor(`ACTIVITY RESULTS`),
-    division = as.factor(ACTIVITY_DIVISION),
-    cat_time = cat_time,
-    cat_wday = as.factor(cat_wday)
-  )
+```
 
-model <- glm(activity_results ~ division, family = "binomial", data = train)
-summary(model2)
 
-stops_r %>%
-  mutate(prob = ifelse(activity_results == "CITATION ISSUED", 1, 0)) %>%
-  ggplot(aes(division, prob)) +
-  geom_point(alpha = .35, position = "jitter") +
-  ggtitle("Logistic regression model fit") +
-  xlab("Division") +
-  ylab("Probability of Warning vs Citation")
+PARAGRAPH 5
 
-predict(model, data.frame(division = c('4TH DIVISION', '8TH DIVISION')), type = "response")
 
-model2 <- glm(activity_results ~ division + cat_time + cat_wday, family = "binomial", data = train)
-summary(model2)
+```{graph 4}
+p <- ggplot(data = officer_divisions, mapping = aes(x = OFFICER_GENDER, y = perc))
+p + geom_col(aes(fill = ACTIVITY_DIVISION), position = "dodge2") +
+  labs(x = "Gender", 
+       y = 'Percentage',
+       title = "Division Distribution by Officer Gender",
+       caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
+  scale_fill_discrete(name = "Division")
+```
+
+
+PARAGRAPH 6
+
+
+
+CITE DATA SOURCE
+
