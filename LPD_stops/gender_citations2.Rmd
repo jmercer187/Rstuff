@@ -49,20 +49,28 @@ stops <- stops_officer_m <- stops_raw %>%
 
 stops_officer_m <- stops %>%
   filter(OFFICER_GENDER == 'M') %>%
-  group_by(DRIVER_GENDER, `ACTIVITY RESULTS`) %>%
+  mutate(
+    `Driver Gender` = DRIVER_GENDER,
+    Outcome = `ACTIVITY RESULTS`
+  ) %>%
+  group_by(`Driver Gender`, Outcome) %>%
   summarize(N = n()) %>%
   mutate(
-    freq = N / sum(N),
-    perc = round((freq * 100), 0)
+    Count = N / sum(N),
+    Percentage = round((Count * 100), 0)
   )
 
 stops_officer_f <- stops %>%
   filter(OFFICER_GENDER == 'F') %>%
-  group_by(DRIVER_GENDER, `ACTIVITY RESULTS`) %>%
+  mutate(
+    `Driver Gender` = DRIVER_GENDER,
+    Outcome = `ACTIVITY RESULTS`
+  ) %>%
+  group_by(`Driver Gender`, Outcome) %>%
   summarize(N = n()) %>%
   mutate(
-    freq = N / sum(N),
-    perc = round((freq * 100), 0)
+    Count = N / sum(N),
+    Percentage = round((Count * 100), 0)
   )
 
 officer_divisions <- stops %>%
@@ -77,25 +85,34 @@ officer_divisions <- stops %>%
 
 ### Officer Gender and Traffic Stops
 
-Initially, this analysis was an attempt to find an answer to the question “Are male police officers more likely than female police officers to give women warnings as opposed to citations during traffic stops?”
+The Louisville Metro Police Department’s traffic stop data presents an opportunity to examine trends in police stops. The data reviewed here is from the year of 2015.
 
-The availability of Louisville Metro Police Department’s traffic stop data for 2015 presented an opportunity to quantitatively examine whether male police officers are, on balance, more forgiving of female drivers than male drivers. Or, put another way, are female traffic offenders better at getting out of citations and receiving only a warning than male drivers.
+This analysis started with the question, “Are male police officers more likely than female police officers to give women drivers warnings as opposed to citations during traffic stops?”  This question examines the common trope that male officers are more forgiving of female drivers than male drivers.
 
-Looking at this question, however, a much more interesting trend emerged from the data:
+The answer to this question revealed another trend in the data that warranted further exploration. 
+
 
 
 ```{r graph 1}
-p <- ggplot(data = stops_officer_m, mapping = aes(x = DRIVER_GENDER, y = perc))
-p + geom_col(aes(fill = `ACTIVITY RESULTS`), position = "dodge") +
+p <- ggplot(data = stops_officer_m, mapping = aes(x = `Driver Gender`, y = Percentage))
+p + geom_col(aes(fill = Outcome), position = "dodge") +
   labs(x = "Gender", 
        y = 'Percentage',
        title = "Stops by Male Officers",
        subtitle = "Percentage of Warnings vs Citations given by gender",
        caption = "Data: LMPD Stops Data (https://data.louisvilleky.gov/dataset/lmpd-stops-data)") +
   scale_fill_discrete(name = "Stop Outcome")
+```
 
-p <- ggplot(data = stops_officer_f, mapping = aes(x = DRIVER_GENDER, y = perc))
-p + geom_col(aes(fill = `ACTIVITY RESULTS`), position = "dodge") +
+### Male Officer Stops
+
+``` {r table 1}
+kable(stops_officer_m)
+```
+
+```{r graph 1.2}
+p <- ggplot(data = stops_officer_f, mapping = aes(x = `Driver Gender`, y = Percentage))
+p + geom_col(aes(fill = Outcome), position = "dodge") +
   labs(x = "Gender", 
        y = 'Percentage',
        title = "Stops by Female Officers",
@@ -104,24 +121,21 @@ p + geom_col(aes(fill = `ACTIVITY RESULTS`), position = "dodge") +
   scale_fill_discrete(name = "Stop Outcome")
 ```
 
+### Female Officer Stops
 
-A startling disparity exists between the frequency at which male officers issue citations vs warnings and that of female officers.
-
-
-```{r tables}
-kable(stops_officer_m)
+```{r table 2}
 kable(stops_officer_f)
 ```
 
 
-Regarding the initial question, it does not appear that, in 2015 at least, female drivers received any particular deference from male officers. If anything, this data suggests that there is a tendency for the inverse.
+In 2015, it does not appear that female drivers received any particular deference from male officers. In fact, there does not appear to be any meaningful discrepancy between how officers of either gender treated male or female traffic offenders.
 
-However, the starting question is less interesting than the question posed by this unexpected trend. We should now ask ourselves the question, “Why are female police officers so much more generous with citations than their male counterparts?”
+There is a marked difference in the ratio of citations to warnings issued, depending on the gender of the officer.
 
-The LMPD traffic stops data set records several variables that could point to some possible causes, or at least, correlations in the data. That being said, this is a dense question with confounding variables and causes that defy reliable measurement. It is important to keep 
-these limitations in mind.
+The LMPD traffic stops data set contains several variables that could be corollary or even explanatory with regard to the observed discprancy. That said, examining differences between male and female behavior is a dense question with confounding variables and causes that defy reliable measurement. It is important to keep these limitations in mind.
 
-Diving into the other parts of the data set, the age range and race of drivers stopped does not seem to show a marked difference. Neither does the number of passengers in the vehicle at the time of the stop appear to show much disparity.
+Diving into other parts of the data set, the age range and race of drivers who were stopped does not seem to show a marked difference. Additionally, the number of passengers in the vehicle at the time of the stop does not show much disparity between male and female officers.
+
 
 
 ```{r graph 2}
@@ -202,9 +216,12 @@ p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), p
 ```
 
 
-Most interestingly is female officers execute more traffic stops between the hours of 8pm and 4am than male officers. This could be part of the answer to the question, since vehicles with missing headlights and taillights are stopped at night. Such low-level offenses are likely to produce more warnings.
+There are several trends that appear relevant, when comparing how male and female officers shifts are allocated.
 
-The starkest difference between male and female officers that could help explain the difference in warning issuance comes from the geographic area where the traffic stops occur:
+* A given female officer is more likely to work weekends
+* A given female officer is more likely to work between the hours of 8pm and 4 am
+
+The starkest difference between male and female officers comes from the geographic area where the traffic stop occurred.
 
 
 
@@ -219,13 +236,28 @@ p + geom_col(aes(fill = ACTIVITY_DIVISION), position = "dodge2") +
 ```
 
 
-While it is difficult to say exactly why the 8th and 2nd divisions would result in more warnings than citations, it is possible that the areas where female officers execute traffic stops could have some explanatory value.
+#### Conclusions
 
-PUT IN REGRESSION ANALYSIS
+There are three areas of divergence between male and female officers that could provide clues as to why female officers issue more warnings.
 
-EMPHASIZE EXPLANATORY VALUES
+The first two are that a  female officer is more likely to work nights and weekends than a male officer. There are several ways that this could result in female officers giving more warnings, including stopping erratic but not impaired drivers and drivers with cars with broken lights. 
 
-POSSIBLE FURTHER AREAS OF EXPLORATION BASED ON EXISTING DATA
+The third area is that female officers are more likely than their male counterparts to patrol the 8th Division. This is an area that covers the eastern Louisville suburbs, which are relatively wealthy. It is possible that a deference to more affluent drivers is influencing the decision to write fewer tickets.
 
-CITE DATA SOURCE
+There are also other possible explanations that this study is not equipped to address. For example, it could be that female officers pull over more people than their male counterparts, which could result in more warnings.
+
+Generally speaking, there does not seem to be solid evidence that could point to why female officers are more generous with the drivers that they stop than male officers. All that can be known for certain is that the trend exists.
+
+
+#### Further Study
+
+*	Determine if female officers perform traffic stops at a significantly higher rate than male officers
+*	Examine the characteristics of the different divisions and see if there are any useful correlations that can be drawn
+*	Determine the character of traffic stops during the nights and weekends as opposed to those during the day
+*	Directly poll male and female officers to gain insight into traffic stop habits
+
+
+#### Citation
+All data is from Louisville Metro Open Data. The LMPD Stops Data can be found here:
+https://data.louisvilleky.gov/dataset/lmpd-stops-data
 

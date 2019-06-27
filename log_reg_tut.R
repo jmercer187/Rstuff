@@ -82,7 +82,7 @@ xtabs( ~ hd + ca, data = data)
 xtabs( ~ hd + thal, data = data)
 
 # START WITH A SIMPLE MODEL
-# predit heart disease only using gender
+# predict heart disease only using gender
 
 logistic <- glm(hd ~ sex, data = data, family = "binomial")
 summary(logistic)

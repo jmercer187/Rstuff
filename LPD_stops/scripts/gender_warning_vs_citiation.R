@@ -174,24 +174,21 @@ p + geom_bar(aes(fill = OFFICER_GENDER, y = ..prop.., group = OFFICER_GENDER), p
 stops_r <- stops %>%
   filter(OFFICER_GENDER == "F") %>%
   transmute(
-    activity_results = as.factor(`ACTIVITY RESULTS`),
+    activity_results = ifelse(`ACTIVITY RESULTS` == "WARNING",0,1),
     division = as.factor(ACTIVITY_DIVISION),
     cat_time = cat_time,
     cat_wday = as.factor(cat_wday)
   )
 
-model <- glm(activity_results ~ division, family = "binomial", data = train)
-summary(model2)
-
-stops_r %>%
-  mutate(prob = ifelse(activity_results == "CITATION ISSUED", 1, 0)) %>%
-  ggplot(aes(division, prob)) +
-  geom_point(alpha = .35, position = "jitter") +
-  ggtitle("Logistic regression model fit") +
-  xlab("Division") +
-  ylab("Probability of Warning vs Citation")
+model <- glm(activity_results ~ division, family = "binomial", data = stops_r)
+summary(model)
 
 predict(model, data.frame(division = c('4TH DIVISION', '8TH DIVISION')), type = "response")
 
-model2 <- glm(activity_results ~ division + cat_time + cat_wday, family = "binomial", data = train)
+model2 <- glm(activity_results ~ ., family = "binomial", data = stops_r)
 summary(model2)
+
+model <- glm(activity_results ~ division + cat_time, family = "binomial", data = stops_r)
+summary(model)
+
+predict(model, data.frame(division = c("8th DIVISION")), type = "response")
