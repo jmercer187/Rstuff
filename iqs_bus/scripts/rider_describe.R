@@ -21,6 +21,10 @@ age <- bus_raw %>%
     age = as.integer(Q24)
   )
 
+min(age$age)
+median(age$age)
+max(age$age)
+
 ggplot(data = age, mapping = aes(x = age)) +
   geom_histogram() +
   ggtitle("Rider Age Histogram")
@@ -33,6 +37,9 @@ age_m <- bus_raw %>%
   transmute(
     age = as.integer(Q24)
   )
+
+median(age_m$age)
+
 age_m <- cut(age_m$age, breaks = c(1, 17, 24, 30, 40, 50, 60, 70, 100),
              labels = c("< 18", "18-24", "25-29", "30-39", "40-49", "50-59", "60-69", "70 +"))
 table(age_m)
@@ -41,6 +48,8 @@ age_m$age <- age_m$age_m
 age_m$gender <- "Male"
 age_m$age_m <- NULL
 
+
+
 age_f <- bus_raw %>%
   filter(Q23 == "Female") %>%
   filter(!is.na(Q24) & Q24 != "Refuse") %>%
@@ -48,6 +57,9 @@ age_f <- bus_raw %>%
   transmute(
     age = as.integer(Q24)
   )
+
+median(age_f$age)
+
 age_f <- cut(age_f$age, breaks = c(1, 17, 24, 30, 40, 50, 60, 70, 100),
              labels = c("< 18", "18-24", "25-29", "30-39", "40-49", "50-59", "60-69", "70 +"))
 table(age_f)
@@ -64,8 +76,8 @@ ggplot(data = age_gender, aes(x =age, fill = gender)) +
   geom_bar(data = subset(age_gender, gender == "Male"), aes(y = ..count..*(-1)), color = "grey2") +
   coord_flip() +
   ggtitle("BUS Rider Pyramid Plot") +
-  xlab("Count") +
-  ylab("Age")
+  xlab("Age") +
+  ylab("Count")
 
 race_perc <- bus_raw %>%
   select(Q25) %>%
